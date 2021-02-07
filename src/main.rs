@@ -1,11 +1,11 @@
 use goblin::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::Path;
 
 trait BinAnalyzer {
-    fn ana_dep(&self) -> HashMap<String, Vec<String>>;
+    fn ana_dep(&self) -> BTreeMap<String, Vec<String>>;
 }
 
 mod elf;
@@ -34,7 +34,9 @@ fn main() -> error::Result<()> {
             }
         };
         for (dep, mut symbols) in deps {
-            println!("{}:", dep);
+            if !dep.is_empty() {
+                println!("{}:", dep);
+            }
             symbols.sort_unstable();
             for sym in symbols {
                 println!("    {}", sym);

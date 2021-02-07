@@ -67,7 +67,7 @@ impl<'a> ElfAnalyzer<'a> {
 }
 
 impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
-    fn ana_dep(&self) -> HashMap<String, Vec<String>> {
+    fn ana_dep(&self) -> BTreeMap<String, Vec<String>> {
         let mut dynsyms = self
             .bin
             .dynsyms
@@ -76,25 +76,32 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
             .map(|sym| self.bin.dynstrtab.get_unsafe(sym.st_name).unwrap())
             .collect::<Vec<_>>();
         dynsyms.sort_unstable();
-        let mut map = HashMap::<String, Vec<String>>::new();
-        for lib in self.bin.libraries.iter() {
-            if let Some(lib_path) = self.find_bin(*lib) {
-                let buffer = fs::read(lib_path.as_path()).unwrap();
-                if let Ok(bin) = goblin::elf::Elf::parse(&buffer) {
-                    for sym in bin.dynsyms.iter() {
-                        let sym_name = bin.dynstrtab.get_unsafe(sym.st_name).unwrap();
-                        let index = dynsyms.iter().position(|s| *s == sym_name);
-                        let bind = sym.st_bind();
-                        let is_export = bind != goblin::elf::sym::STB_WEAK && sym.st_value != 0;
-                        if is_export && index.is_some() {
-                            dynsyms.remove(index.unwrap());
-                            map.entry((*lib).to_owned())
-                                .or_default()
-                                .push(sym_name.to_owned());
+        let mut map = BTreeMap::<String, Vec<String>>::new();
+        if std::env::consts::OS == "linux" {
+            for lib in self.bin.libraries.iter() {
+                if let Some(lib_path) = self.find_bin(*lib) {
+                    let buffer = fs::read(lib_path.as_path()).unwrap();
+                    if let Ok(bin) = goblin::elf::Elf::parse(&buffer) {
+                        for sym in bin.dynsyms.iter() {
+                            let sym_name = bin.dynstrtab.get_unsafe(sym.st_name).unwrap();
+                            let index = dynsyms.iter().position(|s| *s == sym_name);
+                            let bind = sym.st_bind();
+                            let is_export = bind != goblin::elf::sym::STB_WEAK && sym.st_value != 0;
+                            if is_export && index.is_some() {
+                                dynsyms.remove(index.unwrap());
+                                map.entry((*lib).to_owned())
+                                    .or_default()
+                                    .push(sym_name.to_owned());
+                            }
                         }
                     }
                 }
             }
+        } else {
+            map.insert(
+                String::default(),
+                dynsyms.iter().map(|s| (*s).to_owned()).collect(),
+            );
         }
         map
     }

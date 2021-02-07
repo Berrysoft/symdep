@@ -11,8 +11,8 @@ impl<'a> PEAnalyzer<'a> {
 }
 
 impl<'a> BinAnalyzer for PEAnalyzer<'a> {
-    fn ana_dep(&self) -> HashMap<String, Vec<String>> {
-        let mut map = HashMap::<String, Vec<String>>::new();
+    fn ana_dep(&self) -> BTreeMap<String, Vec<String>> {
+        let mut map = BTreeMap::<String, Vec<String>>::new();
         for imp in &self.bin.imports {
             map.entry(imp.dll.to_string())
                 .or_default()
