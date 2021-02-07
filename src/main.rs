@@ -8,6 +8,7 @@ trait BinAnalyzer {
     fn ana_dep(&self) -> HashMap<String, Vec<String>>;
 }
 
+mod elf;
 mod pe;
 
 fn main() -> error::Result<()> {
@@ -15,8 +16,9 @@ fn main() -> error::Result<()> {
         let path = Path::new(arg.as_str());
         let buffer = fs::read(path)?;
         let deps = match Object::parse(&buffer)? {
-            Object::Elf(_) => {
-                todo!()
+            Object::Elf(elf) => {
+                let ana = elf::ElfAnalyzer::from_bin(elf);
+                ana.ana_dep()
             }
             Object::PE(pe) => {
                 let ana = pe::PEAnalyzer::from_bin(pe);
@@ -31,8 +33,9 @@ fn main() -> error::Result<()> {
                 ))
             }
         };
-        for (dep, symbols) in deps {
+        for (dep, mut symbols) in deps {
             println!("{}:", dep);
+            symbols.sort_unstable();
             for sym in symbols {
                 println!("    {}", sym);
             }
