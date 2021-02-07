@@ -32,16 +32,14 @@ impl<'a> ElfAnalyzer<'a> {
         let mut run_path = None;
         for d in dyns {
             match d.d_tag {
-                goblin::elf::dynamic::DT_RPATH => {
-                    rpath = Some(self.bin.strtab.get_unsafe(d.d_val as _).unwrap().to_owned())
-                }
+                goblin::elf::dynamic::DT_RPATH => rpath = self.bin.strtab.get_unsafe(d.d_val as _),
                 goblin::elf::dynamic::DT_RUNPATH => {
-                    run_path = Some(self.bin.strtab.get_unsafe(d.d_val as _).unwrap().to_owned())
+                    run_path = self.bin.strtab.get_unsafe(d.d_val as _)
                 }
                 _ => {}
             }
         }
-        if let Some(ref path) = rpath {
+        if let Some(path) = rpath {
             if let Some(buf) = self.find_bin_impl(name, path) {
                 return Some(buf);
             }
@@ -51,7 +49,7 @@ impl<'a> ElfAnalyzer<'a> {
                 return Some(buf);
             }
         }
-        if let Some(ref path) = run_path {
+        if let Some(path) = run_path {
             if let Some(buf) = self.find_bin_impl(name, path) {
                 return Some(buf);
             }
