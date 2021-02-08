@@ -1,12 +1,13 @@
 use crate::*;
+use goblin::elf as gelf;
 use std::path::PathBuf;
 
 pub struct ElfAnalyzer<'a> {
-    bin: goblin::elf::Elf<'a>,
+    bin: gelf::Elf<'a>,
 }
 
 impl<'a> ElfAnalyzer<'a> {
-    pub fn from_bin(bin: goblin::elf::Elf<'a>) -> Self {
+    pub fn from_bin(bin: gelf::Elf<'a>) -> Self {
         Self { bin }
     }
 
@@ -32,10 +33,8 @@ impl<'a> ElfAnalyzer<'a> {
         let mut run_path = None;
         for d in dyns {
             match d.d_tag {
-                goblin::elf::dynamic::DT_RPATH => rpath = self.bin.strtab.get_unsafe(d.d_val as _),
-                goblin::elf::dynamic::DT_RUNPATH => {
-                    run_path = self.bin.strtab.get_unsafe(d.d_val as _)
-                }
+                gelf::dynamic::DT_RPATH => rpath = self.bin.strtab.get_unsafe(d.d_val as _),
+                gelf::dynamic::DT_RUNPATH => run_path = self.bin.strtab.get_unsafe(d.d_val as _),
                 _ => {}
             }
         }
@@ -79,12 +78,12 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
             for lib in self.bin.libraries.iter() {
                 if let Some(lib_path) = self.find_bin(*lib) {
                     let buffer = fs::read(lib_path.as_path()).unwrap();
-                    if let Ok(bin) = goblin::elf::Elf::parse(&buffer) {
+                    if let Ok(bin) = gelf::Elf::parse(&buffer) {
                         for sym in bin.dynsyms.iter() {
                             let sym_name = bin.dynstrtab.get_unsafe(sym.st_name).unwrap();
                             let index = dynsyms.iter().position(|s| *s == sym_name);
                             let bind = sym.st_bind();
-                            let is_export = bind != goblin::elf::sym::STB_WEAK && sym.st_value != 0;
+                            let is_export = bind != gelf::sym::STB_WEAK && sym.st_value != 0;
                             if is_export && index.is_some() {
                                 dynsyms.remove(index.unwrap());
                                 map.entry((*lib).to_owned())

@@ -9,6 +9,7 @@ trait BinAnalyzer {
 }
 
 mod elf;
+mod mach;
 mod pe;
 
 fn main() -> error::Result<()> {
@@ -24,8 +25,9 @@ fn main() -> error::Result<()> {
                 let ana = pe::PEAnalyzer::from_bin(pe);
                 ana.ana_dep()
             }
-            Object::Mach(_) => {
-                todo!()
+            Object::Mach(mach) => {
+                let ana = mach::MachAnalyzer::from_bin(mach);
+                ana.ana_dep()
             }
             _ => {
                 return Err(error::Error::Malformed(
