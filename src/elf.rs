@@ -64,7 +64,19 @@ impl<'a> ElfAnalyzer<'a> {
 }
 
 impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
-    fn ana_dep(&self) -> BTreeMap<String, Vec<String>> {
+    fn description(&self) -> String {
+        format!("ELF{}", if self.bin.is_64 { "64" } else { "32" })
+    }
+
+    fn deps(&self) -> Vec<String> {
+        todo!()
+    }
+
+    fn imports(&self) -> Vec<String> {
+        todo!()
+    }
+
+    fn imp_deps(&self) -> BTreeMap<String, Vec<String>> {
         let mut dynsyms = self
             .bin
             .dynsyms
@@ -101,5 +113,9 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
             );
         }
         map
+    }
+
+    fn exports(&self) -> Vec<String> {
+        todo!()
     }
 }

@@ -24,7 +24,29 @@ impl<'a> MachAnalyzer<'a> {
 }
 
 impl<'a> BinAnalyzer for MachAnalyzer<'a> {
-    fn ana_dep(&self) -> BTreeMap<String, Vec<String>> {
+    fn description(&self) -> String {
+        match &self.bin {
+            gmach::Mach::Binary(bin) => format!("MachO, {}", bin.header.cputype()),
+            gmach::Mach::Fat(multi) => format!(
+                "Fat MachO, {}",
+                multi
+                    .into_iter()
+                    .map(|bin| bin.unwrap().header.cputype().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        }
+    }
+
+    fn deps(&self) -> Vec<String> {
+        todo!()
+    }
+
+    fn imports(&self) -> Vec<String> {
+        todo!()
+    }
+
+    fn imp_deps(&self) -> BTreeMap<String, Vec<String>> {
         match &self.bin {
             gmach::Mach::Binary(bin) => Self::ana_dep_impl(bin),
             gmach::Mach::Fat(multi) => {
@@ -38,5 +60,9 @@ impl<'a> BinAnalyzer for MachAnalyzer<'a> {
                 map
             }
         }
+    }
+
+    fn exports(&self) -> Vec<String> {
+        todo!()
     }
 }
