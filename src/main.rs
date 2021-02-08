@@ -49,7 +49,7 @@ fn main() -> error::Result<()> {
     };
     println!(
         "{}: {}",
-        opt.input.into_os_string().into_string().unwrap(),
+        opt.input.file_name().unwrap().to_string_lossy().as_ref(),
         ana.description()
     );
     if opt.exports {
