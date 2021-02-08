@@ -1,5 +1,4 @@
 use crate::*;
-use itertools::*;
 
 pub struct PEAnalyzer<'a> {
     bin: goblin::pe::PE<'a>,
@@ -16,16 +15,15 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
         format!("PE{}", if self.bin.is_64 { "32+" } else { "32" })
     }
 
-    fn deps(&self) -> Vec<String> {
+    fn deps(&self) -> BTreeSet<String> {
         self.bin
             .imports
             .iter()
             .map(|imp| imp.dll.to_string())
-            .unique()
             .collect()
     }
 
-    fn imports(&self) -> Vec<String> {
+    fn imports(&self) -> BTreeSet<String> {
         self.bin
             .imports
             .iter()
@@ -33,17 +31,17 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
             .collect()
     }
 
-    fn imp_deps(&self) -> BTreeMap<String, Vec<String>> {
-        let mut map = BTreeMap::<String, Vec<String>>::new();
+    fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
+        let mut map = BTreeMap::<String, BTreeSet<String>>::new();
         for imp in &self.bin.imports {
             map.entry(imp.dll.to_string())
                 .or_default()
-                .push(imp.name.as_ref().to_owned());
+                .insert(imp.name.as_ref().to_owned());
         }
         map
     }
 
-    fn exports(&self) -> Vec<String> {
+    fn exports(&self) -> BTreeSet<String> {
         self.bin
             .exports
             .iter()

@@ -61,6 +61,19 @@ impl<'a> ElfAnalyzer<'a> {
         }
         None
     }
+
+    fn exports_impl(bin: &gelf::Elf) -> BTreeSet<String> {
+        bin.dynsyms
+            .iter()
+            .filter(|sym| sym.st_bind() != gelf::sym::STB_WEAK && sym.st_value != 0)
+            .map(|sym| {
+                bin.dynstrtab
+                    .get_unsafe(sym.st_name)
+                    .map(|s| s.to_owned())
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
 }
 
 impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
@@ -68,54 +81,52 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
         format!("ELF{}", if self.bin.is_64 { "64" } else { "32" })
     }
 
-    fn deps(&self) -> Vec<String> {
-        todo!()
+    fn deps(&self) -> BTreeSet<String> {
+        self.bin
+            .libraries
+            .iter()
+            .map(|lib| (*lib).to_owned())
+            .collect()
     }
 
-    fn imports(&self) -> Vec<String> {
-        todo!()
-    }
-
-    fn imp_deps(&self) -> BTreeMap<String, Vec<String>> {
-        let mut dynsyms = self
-            .bin
+    fn imports(&self) -> BTreeSet<String> {
+        self.bin
             .dynsyms
             .iter()
             .filter(|sym| sym.is_import())
-            .map(|sym| self.bin.dynstrtab.get_unsafe(sym.st_name).unwrap())
-            .collect::<Vec<_>>();
-        dynsyms.sort_unstable();
-        let mut map = BTreeMap::<String, Vec<String>>::new();
+            .map(|sym| {
+                self.bin
+                    .dynstrtab
+                    .get_unsafe(sym.st_name)
+                    .map(|s| s.to_owned())
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+
+    fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
+        let mut dynsyms = self.imports();
+        let mut map = BTreeMap::<String, BTreeSet<String>>::new();
         if std::env::consts::OS == "linux" {
             for lib in self.bin.libraries.iter() {
                 if let Some(lib_path) = self.find_bin(*lib) {
                     let buffer = fs::read(lib_path.as_path()).unwrap();
                     if let Ok(bin) = gelf::Elf::parse(&buffer) {
-                        for sym in bin.dynsyms.iter() {
-                            let sym_name = bin.dynstrtab.get_unsafe(sym.st_name).unwrap();
-                            let index = dynsyms.iter().position(|s| *s == sym_name);
-                            let bind = sym.st_bind();
-                            let is_export = bind != gelf::sym::STB_WEAK && sym.st_value != 0;
-                            if is_export && index.is_some() {
-                                dynsyms.remove(index.unwrap());
-                                map.entry((*lib).to_owned())
-                                    .or_default()
-                                    .push(sym_name.to_owned());
-                            }
-                        }
+                        let mut exports = Self::exports_impl(&bin);
+                        dynsyms = dynsyms.difference(&exports).cloned().collect();
+                        map.entry((*lib).to_owned())
+                            .or_default()
+                            .append(&mut exports);
                     }
                 }
             }
         } else {
-            map.insert(
-                String::default(),
-                dynsyms.iter().map(|s| (*s).to_owned()).collect(),
-            );
+            map.insert(String::default(), self.imports());
         }
         map
     }
 
-    fn exports(&self) -> Vec<String> {
-        todo!()
+    fn exports(&self) -> BTreeSet<String> {
+        Self::exports_impl(&self.bin)
     }
 }

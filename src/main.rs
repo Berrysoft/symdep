@@ -1,15 +1,15 @@
 use goblin::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::*;
 use structopt::StructOpt;
 
 trait BinAnalyzer {
     fn description(&self) -> String;
-    fn deps(&self) -> Vec<String>;
-    fn imports(&self) -> Vec<String>;
-    fn imp_deps(&self) -> BTreeMap<String, Vec<String>>;
-    fn exports(&self) -> Vec<String>;
+    fn deps(&self) -> BTreeSet<String>;
+    fn imports(&self) -> BTreeSet<String>;
+    fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>>;
+    fn exports(&self) -> BTreeSet<String>;
 }
 
 mod elf;
@@ -53,32 +53,25 @@ fn main() -> error::Result<()> {
         ana.description()
     );
     if opt.exports {
-        let mut symbols = ana.exports();
-        symbols.sort_unstable();
-        for sym in symbols {
+        for sym in ana.exports() {
             println!("{}", sym);
         }
     } else if opt.deps && opt.imports {
         let deps = ana.imp_deps();
-        for (dep, mut symbols) in deps {
+        for (dep, symbols) in deps {
             if !dep.is_empty() {
                 println!("{}:", dep);
             }
-            symbols.sort_unstable();
             for sym in symbols {
                 println!("\t{}", sym);
             }
         }
     } else if opt.deps {
-        let mut deps = ana.deps();
-        deps.sort_unstable();
-        for dep in deps {
-            println!("{}:", dep);
+        for dep in ana.deps() {
+            println!("{}", dep);
         }
     } else if opt.imports {
-        let mut symbols = ana.imports();
-        symbols.sort_unstable();
-        for sym in symbols {
+        for sym in ana.imports() {
             println!("{}", sym);
         }
     }

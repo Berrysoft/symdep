@@ -7,4 +7,3 @@ edition = "2018"
 [dependencies]
 goblin = "0.3"
 structopt = "0.3"
-itertools = "0.10"
