@@ -1,28 +1,35 @@
 use crate::*;
 use goblin::mach as gmach;
 
-pub struct MachAnalyzer<'a> {
-    bin: gmach::Mach<'a>,
+struct MachOAnalyzer<'a> {
+    bin: gmach::MachO<'a>,
 }
 
-impl<'a> MachAnalyzer<'a> {
-    pub fn from_bin(bin: gmach::Mach<'a>) -> Self {
+impl<'a> MachOAnalyzer<'a> {
+    pub fn from_bin(bin: gmach::MachO<'a>) -> Self {
         Self { bin }
     }
+}
 
-    fn deps_impl(bin: &gmach::MachO) -> BTreeSet<String> {
-        bin.libs.iter().map(|s| (*s).to_owned()).collect()
+impl<'a> BinAnalyzer for MachOAnalyzer<'a> {
+    fn description(&self) -> String {
+        format!("Mach-O {}", self.bin.header.cputype())
     }
 
-    fn imports_impl(bin: &gmach::MachO) -> BTreeSet<String> {
-        bin.imports()
+    fn deps(&self) -> BTreeSet<String> {
+        self.bin.libs.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    fn imports(&self) -> BTreeSet<String> {
+        self.bin
+            .imports()
             .map(|imps| imps.iter().map(|imp| imp.name.to_owned()).collect())
             .unwrap_or_default()
     }
 
-    fn imp_deps_impl(bin: &gmach::MachO) -> BTreeMap<String, BTreeSet<String>> {
+    fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
-        if let Ok(imports) = bin.imports() {
+        if let Ok(imports) = self.bin.imports() {
             for imp in imports {
                 map.entry(imp.dylib.to_owned())
                     .or_default()
@@ -32,85 +39,72 @@ impl<'a> MachAnalyzer<'a> {
         map
     }
 
-    fn exports_impl(bin: &gmach::MachO) -> BTreeSet<String> {
-        bin.exports()
+    fn exports(&self) -> BTreeSet<String> {
+        self.bin
+            .exports()
             .map(|exps| exps.iter().map(|exp| exp.name.to_owned()).collect())
             .unwrap_or_default()
     }
 }
 
+pub struct MachAnalyzer<'a> {
+    bins: Vec<MachOAnalyzer<'a>>,
+}
+
+impl<'a> MachAnalyzer<'a> {
+    pub fn from_bin(bin: gmach::Mach<'a>) -> Self {
+        Self {
+            bins: match bin {
+                gmach::Mach::Binary(bin) => vec![MachOAnalyzer::from_bin(bin)],
+                gmach::Mach::Fat(multi) => multi
+                    .into_iter()
+                    .filter_map(|bin| bin.ok().map(|bin| MachOAnalyzer::from_bin(bin)))
+                    .collect(),
+            },
+        }
+    }
+}
+
 impl<'a> BinAnalyzer for MachAnalyzer<'a> {
     fn description(&self) -> String {
-        match &self.bin {
-            gmach::Mach::Binary(bin) => format!("MachO, {}", bin.header.cputype()),
-            gmach::Mach::Fat(multi) => format!(
-                "Fat MachO, {}",
-                multi
-                    .into_iter()
-                    .map(|bin| bin.unwrap().header.cputype().to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+        let des = self
+            .bins
+            .iter()
+            .map(|bin| bin.description())
+            .collect::<Vec<_>>()
+            .join("; ");
+        if self.bins.len() <= 1 {
+            des
+        } else {
+            format!("Fat: {}", des)
         }
     }
 
     fn deps(&self) -> BTreeSet<String> {
-        match &self.bin {
-            gmach::Mach::Binary(bin) => Self::deps_impl(bin),
-            gmach::Mach::Fat(multi) => {
-                let mut set = BTreeSet::new();
-                for bin in multi.into_iter() {
-                    if let Ok(bin) = bin {
-                        set.append(&mut Self::deps_impl(&bin));
-                    }
-                }
-                set
-            }
-        }
+        self.bins.iter().map(|bin| bin.deps()).flatten().collect()
     }
 
     fn imports(&self) -> BTreeSet<String> {
-        match &self.bin {
-            gmach::Mach::Binary(bin) => Self::imports_impl(bin),
-            gmach::Mach::Fat(multi) => {
-                let mut set = BTreeSet::new();
-                for bin in multi.into_iter() {
-                    if let Ok(bin) = bin {
-                        set.append(&mut Self::imports_impl(&bin));
-                    }
-                }
-                set
-            }
-        }
+        self.bins
+            .iter()
+            .map(|bin| bin.imports())
+            .flatten()
+            .collect()
     }
 
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
-        match &self.bin {
-            gmach::Mach::Binary(bin) => Self::imp_deps_impl(bin),
-            gmach::Mach::Fat(multi) => {
-                let mut map = BTreeMap::new();
-                for bin in multi.into_iter() {
-                    if let Ok(bin) = bin {
-                        map.append(&mut Self::imp_deps_impl(&bin));
-                    }
-                }
-                map
-            }
-        }
+        self.bins
+            .iter()
+            .map(|bin| bin.imp_deps())
+            .flatten()
+            .collect()
     }
 
     fn exports(&self) -> BTreeSet<String> {
-        match &self.bin {
-            gmach::Mach::Binary(bin) => Self::exports_impl(bin),
-            gmach::Mach::Fat(multi) => {
-                let mut set = BTreeSet::new();
-                for bin in multi.into_iter() {
-                    if let Ok(bin) = bin {
-                        set.append(&mut Self::exports_impl(&bin));
-                    }
-                }
-                set
-            }
-        }
+        self.bins
+            .iter()
+            .map(|bin| bin.exports())
+            .flatten()
+            .collect()
     }
 }
