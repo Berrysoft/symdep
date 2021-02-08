@@ -33,8 +33,8 @@ impl<'a> ElfAnalyzer<'a> {
         let mut run_path = None;
         for d in dyns {
             match d.d_tag {
-                gelf::dynamic::DT_RPATH => rpath = self.bin.strtab.get_unsafe(d.d_val as _),
-                gelf::dynamic::DT_RUNPATH => run_path = self.bin.strtab.get_unsafe(d.d_val as _),
+                gelf::dynamic::DT_RPATH => rpath = self.bin.dynstrtab.get_unsafe(d.d_val as _),
+                gelf::dynamic::DT_RUNPATH => run_path = self.bin.dynstrtab.get_unsafe(d.d_val as _),
                 _ => {}
             }
         }
@@ -44,8 +44,10 @@ impl<'a> ElfAnalyzer<'a> {
             }
         }
         if let Some(path) = option_env!("LD_LIBRARY_PATH") {
-            if let Some(buf) = self.find_bin_impl(name, path) {
-                return Some(buf);
+            for path in path.split(':') {
+                if let Some(buf) = self.find_bin_impl(name, path) {
+                    return Some(buf);
+                }
             }
         }
         if let Some(path) = run_path {
@@ -65,7 +67,7 @@ impl<'a> ElfAnalyzer<'a> {
     fn exports_impl(bin: &gelf::Elf) -> BTreeSet<String> {
         bin.dynsyms
             .iter()
-            .filter(|sym| sym.st_bind() != gelf::sym::STB_WEAK && sym.st_value != 0)
+            .filter(|sym| sym.st_value != 0)
             .map(|sym| {
                 bin.dynstrtab
                     .get_unsafe(sym.st_name)
