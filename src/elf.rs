@@ -112,11 +112,12 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
                 if let Some(lib_path) = self.find_bin(*lib) {
                     let buffer = fs::read(lib_path.as_path()).unwrap();
                     if let Ok(bin) = gelf::Elf::parse(&buffer) {
-                        let mut exports = Self::exports_impl(&bin);
+                        let exports = Self::exports_impl(&bin);
+                        let mut used_exports = dynsyms.intersection(&exports).cloned().collect();
                         dynsyms = dynsyms.difference(&exports).cloned().collect();
                         map.entry((*lib).to_owned())
                             .or_default()
-                            .append(&mut exports);
+                            .append(&mut used_exports);
                     }
                 }
             }
