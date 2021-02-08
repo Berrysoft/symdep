@@ -107,22 +107,21 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
         let mut dynsyms = self.imports();
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
-        if std::env::consts::OS == "linux" {
-            for lib in self.bin.libraries.iter() {
-                if let Some(lib_path) = self.find_bin(*lib) {
-                    let buffer = fs::read(lib_path.as_path()).unwrap();
-                    if let Ok(bin) = gelf::Elf::parse(&buffer) {
-                        let exports = Self::exports_impl(&bin);
-                        let mut used_exports = dynsyms.intersection(&exports).cloned().collect();
-                        dynsyms = dynsyms.difference(&exports).cloned().collect();
-                        map.entry((*lib).to_owned())
-                            .or_default()
-                            .append(&mut used_exports);
-                    }
+        for lib in self.bin.libraries.iter() {
+            if let Some(lib_path) = self.find_bin(*lib) {
+                let buffer = fs::read(lib_path.as_path()).unwrap();
+                if let Ok(bin) = gelf::Elf::parse(&buffer) {
+                    let exports = Self::exports_impl(&bin);
+                    let mut used_exports = dynsyms.intersection(&exports).cloned().collect();
+                    dynsyms = dynsyms.difference(&exports).cloned().collect();
+                    map.entry((*lib).to_owned())
+                        .or_default()
+                        .append(&mut used_exports);
                 }
             }
-        } else {
-            map.insert(String::default(), self.imports());
+        }
+        if !dynsyms.is_empty() {
+            map.insert("<Unknown dependency>".to_owned(), dynsyms);
         }
         map
     }

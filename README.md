@@ -21,4 +21,4 @@ It uses `goblin` package to read the binaries.
 
 ## Note for ELF
 ELF doesn't require a symbol should be found in a specific library for convience.
-Therefore, this tool tries to do the same as `ld.so` to find the libraries for the symbols.
+Therefore, `symdep` tries to do the same as `ld.so` to find the libraries for the symbols.
