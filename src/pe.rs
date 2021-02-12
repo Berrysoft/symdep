@@ -1,11 +1,12 @@
 use crate::*;
+use goblin::pe as gpe;
 
 pub struct PEAnalyzer<'a> {
-    bin: goblin::pe::PE<'a>,
+    bin: gpe::PE<'a>,
 }
 
 impl<'a> PEAnalyzer<'a> {
-    pub fn from_bin(bin: goblin::pe::PE<'a>) -> Self {
+    pub fn from_bin(bin: gpe::PE<'a>) -> Self {
         Self { bin }
     }
 }
@@ -46,10 +47,22 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
             .exports
             .iter()
             .map(|exp| {
-                if let Some(name) = exp.name {
-                    name.to_owned()
+                let name = if let Some(name) = exp.name {
+                    Cow::Borrowed(name)
                 } else {
-                    format!("{:#x}", exp.offset)
+                    Cow::Owned(format!("OFFSET {}", exp.offset))
+                };
+                if let Some(reexp) = &exp.reexport {
+                    match reexp {
+                        gpe::export::Reexport::DLLName { export, lib } => {
+                            format!("{} -> {}!{}", &name, *lib, *export)
+                        }
+                        gpe::export::Reexport::DLLOrdinal { ordinal, lib } => {
+                            format!("{} -> {}!#{}", &name, *lib, *ordinal)
+                        }
+                    }
+                } else {
+                    name.as_ref().to_owned()
                 }
             })
             .collect()
