@@ -58,7 +58,13 @@ impl<'a> ElfAnalyzer<'a> {
         if let Some(buf) = self.find_bin_impl(name, "/lib") {
             return Some(buf);
         }
+        if let Some(buf) = self.find_bin_impl(name, "/lib64") {
+            return Some(buf);
+        }
         if let Some(buf) = self.find_bin_impl(name, "/usr/lib") {
+            return Some(buf);
+        }
+        if let Some(buf) = self.find_bin_impl(name, "/usr/lib64") {
             return Some(buf);
         }
         None
