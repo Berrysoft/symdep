@@ -11,6 +11,110 @@ impl<'a> ElfAnalyzer<'a> {
         Self { bin }
     }
 
+    fn exports_impl(bin: &gelf::Elf) -> BTreeSet<String> {
+        bin.dynsyms
+            .iter()
+            .filter(|sym| sym.st_value != 0)
+            .map(|sym| {
+                bin.dynstrtab
+                    .get_unsafe(sym.st_name)
+                    .map(|s| s.to_owned())
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod ldfind {
+    use libc::{dlclose, dlerror, dlinfo, dlopen, RTLD_DI_LINKMAP, RTLD_LAZY};
+    use std::ffi::{c_void, CStr, CString};
+    use std::os::raw::c_char;
+    use std::ptr::null_mut;
+
+    #[repr(C)]
+    struct link_map64 {
+        l_addr: u64,
+        l_name: *mut c_char,
+        l_ld: *mut goblin::elf64::dynamic::Dyn,
+        l_next: *mut link_map64,
+        l_prev: *mut link_map64,
+    }
+
+    #[repr(C)]
+    struct link_map32 {
+        l_addr: u32,
+        l_name: *mut c_char,
+        l_ld: *mut goblin::elf32::dynamic::Dyn,
+        l_next: *mut link_map32,
+        l_prev: *mut link_map32,
+    }
+
+    fn panic_dlerror() -> ! {
+        panic!(
+            "{}",
+            unsafe { CStr::from_ptr(dlerror()) }
+                .to_string_lossy()
+                .as_ref()
+        )
+    }
+
+    #[repr(transparent)]
+    pub struct DynLib(*mut c_void);
+
+    impl DynLib {
+        pub fn open(path: &str) -> Self {
+            let path = CString::new(path).unwrap();
+            let handle = unsafe { dlopen(path.as_ptr(), RTLD_LAZY) };
+            if handle.is_null() {
+                panic_dlerror();
+            }
+            Self(handle)
+        }
+
+        pub fn full_path(&self, is_64: bool) -> Option<String> {
+            unsafe {
+                if is_64 {
+                    let mut plink: *mut link_map64 = null_mut();
+                    if dlinfo(self.0, RTLD_DI_LINKMAP, &mut plink as *mut _ as _) < 0 {
+                        panic_dlerror();
+                    }
+                    if let Some(link) = plink.as_mut() {
+                        if !link.l_name.is_null() {
+                            return Some(
+                                CStr::from_ptr(link.l_name).to_string_lossy().into_owned(),
+                            );
+                        }
+                    }
+                } else {
+                    let mut plink: *mut link_map32 = null_mut();
+                    if dlinfo(self.0, RTLD_DI_LINKMAP, &mut plink as *mut _ as _) < 0 {
+                        panic_dlerror();
+                    }
+                    if let Some(link) = plink.as_mut() {
+                        if !link.l_name.is_null() {
+                            return Some(
+                                CStr::from_ptr(link.l_name).to_string_lossy().into_owned(),
+                            );
+                        }
+                    }
+                }
+            }
+            None
+        }
+    }
+
+    impl Drop for DynLib {
+        fn drop(&mut self) {
+            unsafe {
+                dlclose(self.0);
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl<'a> ElfAnalyzer<'a> {
     fn find_bin_impl(&self, name: &str, path: &str) -> Option<PathBuf> {
         if let Ok(dir) = fs::read_dir(path) {
             for entry in dir {
@@ -25,9 +129,6 @@ impl<'a> ElfAnalyzer<'a> {
     }
 
     fn find_bin(&self, name: &str) -> Option<PathBuf> {
-        if name.contains('/') {
-            return Some(PathBuf::from(name));
-        }
         let dyns = &self.bin.dynamic.as_ref().unwrap().dyns;
         let mut rpath = None;
         let mut run_path = None;
@@ -55,32 +156,8 @@ impl<'a> ElfAnalyzer<'a> {
                 return Some(buf);
             }
         }
-        if let Some(buf) = self.find_bin_impl(name, "/lib") {
-            return Some(buf);
-        }
-        if let Some(buf) = self.find_bin_impl(name, "/lib64") {
-            return Some(buf);
-        }
-        if let Some(buf) = self.find_bin_impl(name, "/usr/lib") {
-            return Some(buf);
-        }
-        if let Some(buf) = self.find_bin_impl(name, "/usr/lib64") {
-            return Some(buf);
-        }
-        None
-    }
-
-    fn exports_impl(bin: &gelf::Elf) -> BTreeSet<String> {
-        bin.dynsyms
-            .iter()
-            .filter(|sym| sym.st_value != 0)
-            .map(|sym| {
-                bin.dynstrtab
-                    .get_unsafe(sym.st_name)
-                    .map(|s| s.to_owned())
-                    .unwrap_or_default()
-            })
-            .collect()
+        let lib = ldfind::DynLib::open(name);
+        lib.full_path(self.bin.is_64).map(|s| PathBuf::from(s))
     }
 }
 
@@ -113,8 +190,10 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
     }
 
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
+        #[allow(unused_mut)]
         let mut dynsyms = self.imports();
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
+        #[cfg(target_os = "linux")]
         for lib in self.bin.libraries.iter() {
             if let Some(lib_path) = self.find_bin(*lib) {
                 let buffer = fs::read(lib_path.as_path()).unwrap();

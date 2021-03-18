@@ -10,3 +10,6 @@ structopt = "0.3"
 msvc-demangler = "0.8"
 cpp_demangle = "0.3"
 rustc-demangle = "0.1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
