@@ -1,5 +1,7 @@
 use crate::*;
 use goblin::elf as gelf;
+
+#[cfg(target_os = "linux")]
 use std::path::PathBuf;
 
 pub struct ElfAnalyzer<'a> {
