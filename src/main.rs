@@ -1,9 +1,9 @@
+use clap::Parser;
 use goblin::*;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::*;
-use structopt::StructOpt;
 
 trait BinAnalyzer {
     fn description(&self) -> String;
@@ -17,55 +17,56 @@ mod elf;
 mod mach;
 mod pe;
 
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "symdep",
+#[derive(Debug, Parser)]
+#[clap(
+    author,
+    version,
     about = "A simple tool to view the import & export symbols of executable."
 )]
 struct Options {
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     /// Input binary file.
     input: PathBuf,
-    #[structopt(short, long)]
+    #[clap(short, long)]
     /// Show dependencies.
     deps: bool,
-    #[structopt(short, long)]
+    #[clap(short, long)]
     /// Show export symbols.
     exports: bool,
-    #[structopt(short, long)]
+    #[clap(short, long)]
     /// Show import symbols.
     imports: bool,
-    #[structopt(short = "m", long)]
+    #[clap(short = 'm', long)]
     /// Demangle symbols.
     demangle: bool,
 }
 
-fn demangle_impl(name: Cow<str>) -> String {
+fn demangle_impl<'a>(name: Cow<'a, str>) -> Cow<'a, str> {
     if let Ok(name) = msvc_demangler::demangle(&name, msvc_demangler::DemangleFlags::llvm()) {
-        name
+        name.into()
     } else {
         let dename = rustc_demangle::demangle(&name).to_string();
         if dename != name.as_ref() {
-            dename
+            dename.into()
         } else if let Ok(sym) = cpp_demangle::Symbol::new(name.as_bytes()) {
-            sym.to_string()
+            sym.to_string().into()
         } else {
-            name.into_owned()
+            name
         }
     }
 }
 
 #[inline]
-fn demangle<'a, S: Into<Cow<'a, str>>>(name: S, demangle: bool) -> String {
+fn demangle<'a>(name: impl Into<Cow<'a, str>>, demangle: bool) -> Cow<'a, str> {
     if demangle {
         demangle_impl(name.into())
     } else {
-        name.into().into_owned()
+        name.into()
     }
 }
 
 fn main() -> error::Result<()> {
-    let opt = Options::from_args();
+    let opt = Options::parse();
     let buffer = fs::read(opt.input.as_path())?;
     let ana: Box<dyn BinAnalyzer> = match Object::parse(&buffer)? {
         Object::Elf(elf) => Box::new(elf::ElfAnalyzer::from_bin(elf)),

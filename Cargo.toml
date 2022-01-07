@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 goblin = "0.4"
-structopt = "0.3"
+clap = { version = "3.0", features = ["derive"] }
 msvc-demangler = "0.9"
 cpp_demangle = "0.3"
 rustc-demangle = "0.1"
