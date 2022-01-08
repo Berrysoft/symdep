@@ -2,7 +2,7 @@
 name = "symdep"
 version = "0.1.0"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 goblin = "0.4"
