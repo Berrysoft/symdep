@@ -50,7 +50,7 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
                 let name = if let Some(name) = exp.name {
                     Cow::Borrowed(name)
                 } else {
-                    Cow::Owned(format!("OFFSET {}", exp.offset))
+                    Cow::Owned(format!("OFFSET {}", exp.offset.unwrap_or_default()))
                 };
                 if let Some(reexp) = &exp.reexport {
                     match reexp {
