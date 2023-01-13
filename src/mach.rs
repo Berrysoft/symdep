@@ -1,5 +1,5 @@
 use crate::*;
-use goblin::mach as gmach;
+use goblin::mach::{self as gmach, SingleArch};
 
 struct MachOAnalyzer<'a> {
     bin: gmach::MachO<'a>,
@@ -58,7 +58,12 @@ impl<'a> MachAnalyzer<'a> {
                 gmach::Mach::Binary(bin) => vec![MachOAnalyzer::from_bin(bin)],
                 gmach::Mach::Fat(multi) => multi
                     .into_iter()
-                    .filter_map(|bin| bin.ok().map(MachOAnalyzer::from_bin))
+                    .filter_map(|bin| {
+                        bin.ok().and_then(|bin| match bin {
+                            SingleArch::MachO(bin) => Some(MachOAnalyzer::from_bin(bin)),
+                            _ => None,
+                        })
+                    })
                     .collect(),
             },
         }

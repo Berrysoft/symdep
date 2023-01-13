@@ -24,7 +24,6 @@ mod pe;
     about = "A simple tool to view the import & export symbols of executable."
 )]
 struct Options {
-    #[clap(parse(from_os_str))]
     /// Input binary file.
     input: PathBuf,
     #[clap(short, long)]
