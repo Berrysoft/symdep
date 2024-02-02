@@ -40,7 +40,7 @@ struct Options {
     demangle: bool,
 }
 
-fn demangle_impl<'a>(name: Cow<'a, str>) -> Cow<'a, str> {
+fn demangle_impl(name: Cow<str>) -> Cow<str> {
     if let Ok(name) = msvc_demangler::demangle(&name, msvc_demangler::DemangleFlags::llvm()) {
         name.into()
     } else {

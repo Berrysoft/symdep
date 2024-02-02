@@ -30,11 +30,13 @@ impl<'a> ElfAnalyzer<'a> {
 #[cfg(target_os = "linux")]
 mod ldfind {
     use libc::{dlclose, dlerror, dlinfo, dlopen, RTLD_DI_LINKMAP, RTLD_LAZY};
-    use std::ffi::{c_void, CStr, CString};
+    use std::ffi::{c_void, CStr, CString, OsStr};
     use std::os::raw::c_char;
+    use std::path::PathBuf;
     use std::ptr::null_mut;
 
     #[repr(C)]
+    #[allow(non_camel_case_types)]
     struct link_map64 {
         l_addr: u64,
         l_name: *mut c_char,
@@ -44,6 +46,7 @@ mod ldfind {
     }
 
     #[repr(C)]
+    #[allow(non_camel_case_types)]
     struct link_map32 {
         l_addr: u32,
         l_name: *mut c_char,
@@ -74,7 +77,7 @@ mod ldfind {
             Self(handle)
         }
 
-        pub fn full_path(&self, is_64: bool) -> Option<String> {
+        pub fn full_path(&self, is_64: bool) -> Option<PathBuf> {
             unsafe {
                 if is_64 {
                     let mut plink: *mut link_map64 = null_mut();
@@ -83,9 +86,9 @@ mod ldfind {
                     }
                     if let Some(link) = plink.as_mut() {
                         if !link.l_name.is_null() {
-                            return Some(
-                                CStr::from_ptr(link.l_name).to_string_lossy().into_owned(),
-                            );
+                            return Some(PathBuf::from(OsStr::from_encoded_bytes_unchecked(
+                                CStr::from_ptr(link.l_name).to_bytes(),
+                            )));
                         }
                     }
                 } else {
@@ -95,9 +98,9 @@ mod ldfind {
                     }
                     if let Some(link) = plink.as_mut() {
                         if !link.l_name.is_null() {
-                            return Some(
-                                CStr::from_ptr(link.l_name).to_string_lossy().into_owned(),
-                            );
+                            return Some(PathBuf::from(OsStr::from_encoded_bytes_unchecked(
+                                CStr::from_ptr(link.l_name).to_bytes(),
+                            )));
                         }
                     }
                 }
@@ -119,11 +122,9 @@ mod ldfind {
 impl<'a> ElfAnalyzer<'a> {
     fn find_bin_impl(&self, name: &str, path: &str) -> Option<PathBuf> {
         if let Ok(dir) = fs::read_dir(path) {
-            for entry in dir {
-                if let Ok(entry) = entry {
-                    if entry.file_name() == name {
-                        return Some(entry.path());
-                    }
+            for entry in dir.flatten() {
+                if entry.file_name() == name {
+                    return Some(entry.path());
                 }
             }
         }
@@ -159,7 +160,7 @@ impl<'a> ElfAnalyzer<'a> {
             }
         }
         let lib = ldfind::DynLib::open(name);
-        lib.full_path(self.bin.is_64).map(|s| PathBuf::from(s))
+        lib.full_path(self.bin.is_64)
     }
 }
 
@@ -197,7 +198,7 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
         #[cfg(target_os = "linux")]
         for lib in self.bin.libraries.iter() {
-            if let Some(lib_path) = self.find_bin(*lib) {
+            if let Some(lib_path) = self.find_bin(lib) {
                 let buffer = fs::read(lib_path.as_path()).unwrap();
                 if let Ok(bin) = gelf::Elf::parse(&buffer) {
                     let exports = Self::exports_impl(&bin);

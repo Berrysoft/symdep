@@ -86,30 +86,18 @@ impl<'a> BinAnalyzer for MachAnalyzer<'a> {
     }
 
     fn deps(&self) -> BTreeSet<String> {
-        self.bins.iter().map(|bin| bin.deps()).flatten().collect()
+        self.bins.iter().flat_map(|bin| bin.deps()).collect()
     }
 
     fn imports(&self) -> BTreeSet<String> {
-        self.bins
-            .iter()
-            .map(|bin| bin.imports())
-            .flatten()
-            .collect()
+        self.bins.iter().flat_map(|bin| bin.imports()).collect()
     }
 
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
-        self.bins
-            .iter()
-            .map(|bin| bin.imp_deps())
-            .flatten()
-            .collect()
+        self.bins.iter().flat_map(|bin| bin.imp_deps()).collect()
     }
 
     fn exports(&self) -> BTreeSet<String> {
-        self.bins
-            .iter()
-            .map(|bin| bin.exports())
-            .flatten()
-            .collect()
+        self.bins.iter().flat_map(|bin| bin.exports()).collect()
     }
 }
