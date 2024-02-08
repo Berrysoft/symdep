@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 goblin = "0.8"
 clap = { version = "4.0", features = ["derive"] }
-msvc-demangler = "0.9"
+msvc-demangler = "0.10"
 cpp_demangle = "0.4"
 rustc-demangle = "0.1"
 
