@@ -3,6 +3,9 @@ name = "symdep"
 version = "0.1.0"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
 edition = "2021"
+description = "Command line tool to show the imports and exports of binaries."
+repository = "https://github.com/Berrysoft/symdep"
+license = "MIT"
 
 [dependencies]
 goblin = "0.8"
