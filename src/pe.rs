@@ -20,7 +20,7 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
         self.bin
             .imports
             .iter()
-            .map(|imp| imp.dll.to_string())
+            .map(|imp| imp.dll.to_lowercase())
             .collect()
     }
 
@@ -35,7 +35,7 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
         for imp in &self.bin.imports {
-            map.entry(imp.dll.to_string())
+            map.entry(imp.dll.to_lowercase())
                 .or_default()
                 .insert(imp.name.as_ref().to_owned());
         }
@@ -50,15 +50,15 @@ impl<'a> BinAnalyzer for PEAnalyzer<'a> {
                 let name = if let Some(name) = exp.name {
                     Cow::Borrowed(name)
                 } else {
-                    Cow::Owned(format!("OFFSET {}", exp.offset.unwrap_or_default()))
+                    Cow::Owned(format!("#{}", exp.offset.unwrap_or_default()))
                 };
                 if let Some(reexp) = &exp.reexport {
                     match reexp {
                         gpe::export::Reexport::DLLName { export, lib } => {
-                            format!("{} -> {}!{}", &name, *lib, *export)
+                            format!("{} -> {}!{}", &name, lib.to_lowercase(), *export)
                         }
                         gpe::export::Reexport::DLLOrdinal { ordinal, lib } => {
-                            format!("{} -> {}!#{}", &name, *lib, *ordinal)
+                            format!("{} -> {}!#{}", &name, lib.to_lowercase(), *ordinal)
                         }
                     }
                 } else {
