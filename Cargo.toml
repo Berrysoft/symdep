@@ -8,7 +8,7 @@ repository = "https://github.com/Berrysoft/symdep"
 license = "MIT"
 
 [dependencies]
-goblin = "0.8"
+goblin = "0.9"
 clap = { version = "4.0", features = ["derive"] }
 msvc-demangler = "0.10"
 cpp_demangle = "0.4"
