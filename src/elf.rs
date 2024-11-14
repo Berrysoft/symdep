@@ -175,6 +175,11 @@ impl<'a> ElfAnalyzer<'a> {
     }
 }
 
+fn is_import(sym: &gelf::Sym) -> bool {
+    let bind = sym.st_bind();
+    bind == gelf::sym::STB_GLOBAL || bind == gelf::sym::STB_WEAK
+}
+
 impl BinAnalyzer for ElfAnalyzer<'_> {
     fn description(&self) -> String {
         format!("ELF{}", if self.bin.is_64 { "64" } else { "32" })
@@ -192,7 +197,7 @@ impl BinAnalyzer for ElfAnalyzer<'_> {
         self.bin
             .dynsyms
             .iter()
-            .filter(|sym| sym.is_import())
+            .filter(is_import)
             .map(|sym| {
                 self.bin
                     .dynstrtab
