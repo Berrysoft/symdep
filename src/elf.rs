@@ -177,7 +177,7 @@ impl<'a> ElfAnalyzer<'a> {
 
 fn is_import(sym: &gelf::Sym) -> bool {
     let bind = sym.st_bind();
-    bind == gelf::sym::STB_GLOBAL || bind == gelf::sym::STB_WEAK
+    (bind == gelf::sym::STB_GLOBAL || bind == gelf::sym::STB_WEAK) && sym.st_shndx == 0
 }
 
 impl BinAnalyzer for ElfAnalyzer<'_> {
