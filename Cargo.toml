@@ -19,3 +19,7 @@ libc = "0.2"
 
 [build-dependencies]
 cfg_aliases = "0.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
