@@ -11,7 +11,7 @@ impl<'a> PEAnalyzer<'a> {
     }
 }
 
-impl<'a> BinAnalyzer for PEAnalyzer<'a> {
+impl BinAnalyzer for PEAnalyzer<'_> {
     fn description(&self) -> String {
         format!("PE{}", if self.bin.is_64 { "32+" } else { "32" })
     }

@@ -1,7 +1,7 @@
 use crate::*;
 use goblin::elf as gelf;
 
-#[cfg(target_os = "linux")]
+#[cfg(elf)]
 use std::path::PathBuf;
 
 pub struct ElfAnalyzer<'a> {
@@ -27,7 +27,7 @@ impl<'a> ElfAnalyzer<'a> {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(elf)]
 mod ldfind {
     use libc::{dlclose, dlerror, dlinfo, dlopen, RTLD_DI_LINKMAP, RTLD_LAZY};
     use std::ffi::{c_void, CStr, CString, OsStr};
@@ -118,7 +118,7 @@ mod ldfind {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(elf)]
 impl<'a> ElfAnalyzer<'a> {
     fn find_bin_impl(&self, name: &str, path: &str) -> Option<PathBuf> {
         if let Ok(dir) = fs::read_dir(path) {
@@ -164,7 +164,7 @@ impl<'a> ElfAnalyzer<'a> {
     }
 }
 
-impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
+impl BinAnalyzer for ElfAnalyzer<'_> {
     fn description(&self) -> String {
         format!("ELF{}", if self.bin.is_64 { "64" } else { "32" })
     }
@@ -196,7 +196,7 @@ impl<'a> BinAnalyzer for ElfAnalyzer<'a> {
         #[allow(unused_mut)]
         let mut dynsyms = self.imports();
         let mut map = BTreeMap::<String, BTreeSet<String>>::new();
-        #[cfg(target_os = "linux")]
+        #[cfg(elf)]
         for lib in self.bin.libraries.iter() {
             if let Some(lib_path) = self.find_bin(lib) {
                 let buffer = fs::read(lib_path.as_path()).unwrap();

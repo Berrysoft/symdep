@@ -11,7 +11,7 @@ impl<'a> MachOAnalyzer<'a> {
     }
 }
 
-impl<'a> BinAnalyzer for MachOAnalyzer<'a> {
+impl BinAnalyzer for MachOAnalyzer<'_> {
     fn description(&self) -> String {
         format!("Mach-O {}", self.bin.header.cputype())
     }
@@ -70,7 +70,7 @@ impl<'a> MachAnalyzer<'a> {
     }
 }
 
-impl<'a> BinAnalyzer for MachAnalyzer<'a> {
+impl BinAnalyzer for MachAnalyzer<'_> {
     fn description(&self) -> String {
         let des = self
             .bins
