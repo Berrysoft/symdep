@@ -29,11 +29,22 @@ impl<'a> ElfAnalyzer<'a> {
 
 #[cfg(elf)]
 mod ldfind {
-    use libc::{dlclose, dlerror, dlinfo, dlopen, RTLD_DI_LINKMAP, RTLD_LAZY};
+    use libc::{dlclose, dlerror, dlopen, RTLD_LAZY};
     use std::ffi::{c_void, CStr, CString, OsStr};
     use std::os::raw::c_char;
     use std::path::PathBuf;
     use std::ptr::null_mut;
+
+    #[cfg(target_os = "linux")]
+    use libc::{dlinfo, RTLD_DI_LINKMAP};
+
+    #[cfg(not(target_os = "linux"))]
+    const RTLD_DI_LINKMAP: i32 = 2;
+
+    #[cfg(not(target_os = "linux"))]
+    extern "C" {
+        fn dlinfo(handle: *mut c_void, request: i32, p: *mut c_void) -> i32;
+    }
 
     #[repr(C)]
     #[allow(non_camel_case_types)]
