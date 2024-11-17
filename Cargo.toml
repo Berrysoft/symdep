@@ -14,7 +14,7 @@ msvc-demangler = "0.10"
 cpp_demangle = "0.4"
 rustc-demangle = "0.1"
 
-[target.'cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos", target_os = "solaris"))'.dependencies]
 libc = "0.2"
 
 [build-dependencies]
