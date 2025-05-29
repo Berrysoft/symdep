@@ -21,10 +21,17 @@ impl BinAnalyzer for MachOAnalyzer<'_> {
     }
 
     fn imports(&self) -> BTreeSet<String> {
-        self.bin
+        let mut symbols: BTreeSet<String> = self
+            .bin
             .imports()
             .map(|imps| imps.iter().map(|imp| imp.name.to_owned()).collect())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        for (name, nlist) in self.bin.symbols().flatten() {
+            if nlist.is_undefined() {
+                symbols.insert(name.to_owned());
+            }
+        }
+        symbols
     }
 
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
@@ -34,6 +41,15 @@ impl BinAnalyzer for MachOAnalyzer<'_> {
                 map.entry(imp.dylib.to_owned())
                     .or_default()
                     .insert(imp.name.to_owned());
+            }
+        }
+        for (name, nlist) in self.bin.symbols().flatten() {
+            if nlist.is_undefined() {
+                let ord = (nlist.n_desc >> 8) & 0xFF;
+                let dylib = self.bin.libs[ord as usize];
+                map.entry(dylib.to_owned())
+                    .or_default()
+                    .insert(name.to_owned());
             }
         }
         map
