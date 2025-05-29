@@ -1,6 +1,6 @@
 [package]
 name = "symdep"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
 edition = "2021"
 description = "Command line tool to show the imports and exports of binaries."
@@ -8,9 +8,9 @@ repository = "https://github.com/Berrysoft/symdep"
 license = "MIT"
 
 [dependencies]
-goblin = "0.9"
+goblin = "0.10"
 clap = { version = "4.0", features = ["derive"] }
-msvc-demangler = "0.10"
+msvc-demangler = "0.11"
 cpp_demangle = "0.4"
 rustc-demangle = "0.1"
 
