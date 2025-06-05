@@ -97,7 +97,7 @@ impl BinAnalyzer for MachAnalyzer<'_> {
         if self.bins.len() <= 1 {
             des
         } else {
-            format!("Fat: {}", des)
+            format!("Fat: {des}")
         }
     }
 

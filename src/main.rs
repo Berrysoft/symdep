@@ -88,7 +88,7 @@ fn main() -> error::Result<()> {
         let deps = ana.imp_deps();
         for (dep, symbols) in deps {
             if !dep.is_empty() {
-                println!("{}:", dep);
+                println!("{dep}:");
             }
             for sym in symbols {
                 println!("\t{}", demangle(&sym, opt.demangle));
@@ -96,7 +96,7 @@ fn main() -> error::Result<()> {
         }
     } else if opt.deps {
         for dep in ana.deps() {
-            println!("{}", dep);
+            println!("{dep}");
         }
     } else if opt.imports {
         for sym in ana.imports() {
