@@ -43,21 +43,36 @@ struct Options {
     demangle: bool,
 }
 
-static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| HashSet::from([("__wrap_"), ("__emutls_v.")]));
+static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    HashSet::from([
+        "__imp_",
+        "__wrap_",
+        "__emutls_v.",
+        "__emutls_t.",
+        "_GLOBAL__sub_I_",
+        "__gcov_",
+        "__gcda_",
+        "__llvm_gcov_",
+    ])
+});
 
 #[inline]
-fn demangle<'a>(name: impl Into<Cow<'a, str>>, demangle: bool) -> Cow<'a, str> {
+fn demangle<'a>(name: impl Into<Cow<'a, str>>, de: bool) -> Cow<'a, str> {
     let name = name.into();
     let options = DemangleOptions::complete();
-    if demangle {
+    if de {
         if let Some(name) = Name::from(&*name).demangle(options) {
             return name.into();
         }
-    }
-    for p in KNOWN_PREFIX.iter() {
-        if let Some(name) = name.strip_prefix(p) {
-            return format!("[{}] {}", p, Name::from(name).try_demangle(options)).into();
+        for p in KNOWN_PREFIX.iter() {
+            if let Some(name) = name.strip_prefix(p) {
+                return format!("[{}] {}", p, demangle(name, de)).into();
+            } else {
+                let p = format!("_{p}");
+                if let Some(name) = name.strip_prefix(&p) {
+                    return format!("[{}] {}", p, demangle(name, de)).into();
+                }
+            }
         }
     }
     name
