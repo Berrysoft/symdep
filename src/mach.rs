@@ -13,7 +13,14 @@ impl<'a> MachOAnalyzer<'a> {
 
 impl BinAnalyzer for MachOAnalyzer<'_> {
     fn description(&self) -> String {
-        format!("Mach-O {}", self.bin.header.cputype())
+        format!(
+            "Mach-O {}",
+            gmach::cputype::get_arch_name_from_types(
+                self.bin.header.cputype(),
+                self.bin.header.cpusubtype()
+            )
+            .unwrap_or("<unknown>")
+        )
     }
 
     fn deps(&self) -> BTreeSet<String> {
