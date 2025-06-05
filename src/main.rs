@@ -1,9 +1,12 @@
 use clap::Parser;
 use goblin::*;
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::path::*;
+use std::sync::LazyLock;
+use symbolic_common::Name;
+use symbolic_demangle::{Demangle, DemangleOptions};
 
 trait BinAnalyzer {
     fn description(&self) -> String;
@@ -40,28 +43,24 @@ struct Options {
     demangle: bool,
 }
 
-fn demangle_impl(name: Cow<str>) -> Cow<str> {
-    if let Ok(name) = msvc_demangler::demangle(&name, msvc_demangler::DemangleFlags::llvm()) {
-        name.into()
-    } else {
-        let dename = rustc_demangle::demangle(&name).to_string();
-        if dename != name.as_ref() {
-            dename.into()
-        } else if let Ok(sym) = cpp_demangle::Symbol::new(name.as_bytes()) {
-            sym.to_string().into()
-        } else {
-            name
-        }
-    }
-}
+static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| HashSet::from([("__wrap_"), ("__emutls_v.")]));
 
 #[inline]
 fn demangle<'a>(name: impl Into<Cow<'a, str>>, demangle: bool) -> Cow<'a, str> {
+    let name = name.into();
+    let options = DemangleOptions::complete();
     if demangle {
-        demangle_impl(name.into())
-    } else {
-        name.into()
+        if let Some(name) = Name::from(&*name).demangle(options) {
+            return name.into();
+        }
     }
+    for p in KNOWN_PREFIX.iter() {
+        if let Some(name) = name.strip_prefix(p) {
+            return format!("[{}] {}", p, Name::from(name).try_demangle(options)).into();
+        }
+    }
+    name
 }
 
 fn main() -> error::Result<()> {

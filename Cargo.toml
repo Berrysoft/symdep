@@ -10,9 +10,8 @@ license = "MIT"
 [dependencies]
 goblin = "0.10"
 clap = { version = "4.0", features = ["derive"] }
-msvc-demangler = "0.11"
-cpp_demangle = "0.4"
-rustc-demangle = "0.1"
+symbolic-common = "12"
+symbolic-demangle = "12"
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos", target_os = "solaris"))'.dependencies]
 libc = "0.2"
