@@ -1,6 +1,6 @@
 [package]
 name = "symdep"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
 edition = "2021"
 description = "Command line tool to show the imports and exports of binaries."
