@@ -13,7 +13,7 @@ clap = { version = "4.0", features = ["derive"] }
 symbolic-common = "12"
 symbolic-demangle = "12"
 
-[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos", target_os = "solaris"))'.dependencies]
+[target.'cfg(any(windows, target_os = "linux", target_os = "freebsd", target_os = "illumos", target_os = "solaris"))'.dependencies]
 libc = "0.2"
 
 [build-dependencies]

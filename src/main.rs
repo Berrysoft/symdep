@@ -57,12 +57,67 @@ static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     ])
 });
 
+#[cfg(windows)]
+fn msvc_demangle(name: &str) -> Option<String> {
+    use std::{
+        ffi::{CStr, CString},
+        ptr::null_mut,
+    };
+
+    extern "C" {
+        fn __unDName(
+            buffer: *mut libc::c_char,
+            mangled: *const libc::c_char,
+            buflen: libc::c_int,
+            memget: unsafe extern "C" fn(libc::size_t) -> *mut libc::c_void,
+            memfree: unsafe extern "C" fn(*mut libc::c_void),
+            flags: libc::c_uint,
+        ) -> *mut libc::c_char;
+    }
+
+    let cname = CString::new(name).ok()?;
+    let dname = unsafe {
+        __unDName(
+            null_mut(),
+            cname.as_ptr(),
+            0,
+            libc::malloc,
+            libc::free,
+            0x8802,
+        )
+    };
+    if dname.is_null() {
+        return None;
+    }
+
+    struct FreeWrap<T>(*mut T);
+
+    impl<T> Drop for FreeWrap<T> {
+        fn drop(&mut self) {
+            unsafe {
+                libc::free(self.0.cast());
+            }
+        }
+    }
+
+    let dname = FreeWrap(dname);
+    let dname = unsafe { CStr::from_ptr(dname.0) }.to_str().ok()?;
+    if dname == name {
+        None
+    } else {
+        Some(dname.to_string())
+    }
+}
+
 #[inline]
-fn demangle<'a>(name: impl Into<Cow<'a, str>>, de: bool) -> Cow<'a, str> {
-    let name = name.into();
+fn demangle<'a>(name: &'a str, de: bool) -> Cow<'a, str> {
     let options = DemangleOptions::complete();
     if de {
-        if let Some(name) = Name::from(&*name).demangle(options) {
+        #[cfg(windows)]
+        if let Some(name) = msvc_demangle(name) {
+            return name.into();
+        }
+        if let Some(name) = Name::from(name).demangle(options) {
             return name.into();
         }
         for p in KNOWN_PREFIX.iter() {
@@ -86,7 +141,7 @@ fn demangle<'a>(name: impl Into<Cow<'a, str>>, de: bool) -> Cow<'a, str> {
             return format!("{name0} ->[[{rdll}]] {name1}").into();
         }
     }
-    name
+    name.into()
 }
 
 fn main() -> error::Result<()> {
