@@ -53,6 +53,7 @@ static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
         "__gcov_",
         "__gcda_",
         "__llvm_gcov_",
+        "#",
     ])
 });
 
@@ -68,11 +69,21 @@ fn demangle<'a>(name: impl Into<Cow<'a, str>>, de: bool) -> Cow<'a, str> {
             if let Some(name) = name.strip_prefix(p) {
                 return format!("[{}] {}", p, demangle(name, de)).into();
             } else {
+                // Mach-O prefix `_`
                 let p = format!("_{p}");
                 if let Some(name) = name.strip_prefix(&p) {
                     return format!("[{}] {}", p, demangle(name, de)).into();
                 }
             }
+        }
+        // PE DLL reexports
+        let s = name.split(" -> ").collect::<Vec<&str>>();
+        if s.len() == 2 {
+            let name0 = demangle(s[0], de);
+            let name1 = s[1].split("!").collect::<Vec<&str>>();
+            let rdll = name1[0];
+            let name1 = demangle(name1[1], de);
+            return format!("{name0} ->[[{rdll}]] {name1}").into();
         }
     }
     name
