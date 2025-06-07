@@ -57,7 +57,7 @@ static KNOWN_PREFIX: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     ])
 });
 
-#[cfg(windows)]
+#[cfg(all(windows, target_env = "msvc"))]
 fn msvc_demangle(name: &str) -> Option<String> {
     use std::{
         ffi::{CStr, CString},
@@ -113,7 +113,7 @@ fn msvc_demangle(name: &str) -> Option<String> {
 fn demangle<'a>(name: &'a str, de: bool) -> Cow<'a, str> {
     let options = DemangleOptions::complete();
     if de {
-        #[cfg(windows)]
+        #[cfg(all(windows, target_env = "msvc"))]
         if let Some(name) = msvc_demangle(name) {
             return name.into();
         }
