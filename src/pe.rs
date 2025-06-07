@@ -25,11 +25,7 @@ impl BinAnalyzer for PEAnalyzer<'_> {
     }
 
     fn imports(&self) -> BTreeSet<String> {
-        self.bin
-            .imports
-            .iter()
-            .map(|imp| imp.name.as_ref().to_owned())
-            .collect()
+        self.bin.imports.iter().map(imp_name).collect()
     }
 
     fn imp_deps(&self) -> BTreeMap<String, BTreeSet<String>> {
@@ -37,7 +33,7 @@ impl BinAnalyzer for PEAnalyzer<'_> {
         for imp in &self.bin.imports {
             map.entry(imp.dll.to_lowercase())
                 .or_default()
-                .insert(imp.name.as_ref().to_owned());
+                .insert(imp_name(imp));
         }
         map
     }
@@ -66,5 +62,12 @@ impl BinAnalyzer for PEAnalyzer<'_> {
                 }
             })
             .collect()
+    }
+}
+
+fn imp_name(imp: &gpe::import::Import) -> String {
+    match imp.name {
+        Cow::Borrowed(s) => s.to_string(),
+        Cow::Owned(_) => format!("#{}", imp.ordinal),
     }
 }
